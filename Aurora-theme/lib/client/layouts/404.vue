@@ -1,7 +1,7 @@
 <template>
   <nav class="fail_nav">
     <div class="menu">
-      <p class="website_name">Sakura</p>
+      <p class="website_name">Aurora</p>
     </div>
   </nav>
 
