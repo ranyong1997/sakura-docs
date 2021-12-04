@@ -122,6 +122,11 @@ module.exports = {
         //这里配置导航栏项，建议将navbar提取出，比如navbar.js
         navbar: [
             {
+                text: '面经',
+                iconClass: '',
+                link: "/Other/面试题.md",
+            },
+            {
                 text: '前端',
                 iconClass: 'sakura-html',
                 children: [
@@ -129,6 +134,12 @@ module.exports = {
                         text: 'JavaScript',
                         children: [
                             '/Front-end/JavaScript语法学习.md'
+                        ]
+                    },
+                    {
+                        text: 'TypeScript',
+                        children: [
+                            '/Front-end/TypeScript语法学习.md'
                         ]
                     },
                     {
