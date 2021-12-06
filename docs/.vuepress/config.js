@@ -43,7 +43,7 @@ module.exports = {
                 disabledNetEaseMusic: true,
                 //本地歌曲
                 localSongs: {
-                    coverUrl: '/sakura.png',
+                    coverUrl: 'https://gitee.com/ran_yong/mark-down-table-upload/raw/master/img/20211123222242.png',
                     songs: [
                         {
                             path: '/song/1.mp3',
