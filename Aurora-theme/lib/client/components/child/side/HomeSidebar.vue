@@ -10,7 +10,7 @@
       <!--头像信息-->
       <div :id="customId" v-if="showPersonInfo" class="sidebar-single-common">
         <div class="home-sidebar-avatar">
-          <img id="home-sidebar-avatar-img" :src="getAvatar" alt="">
+          <img id="home-sidebar-avatar-img" :src="$withBase(getAvatar)" alt="">
         </div>
         <div class="home-sidebar-info-desc">
           <span>{{getLogoTitle}}</span>
@@ -95,9 +95,9 @@
         <div v-show="changePageIndex === '2'">
           <div v-for="item in getLatestPage" :key="item.articleUrl" :data="item.articleUrl" class="sidebar-page-item sidebar-hover-bg-common">
             <div class="sidebar-page-title">
-              <a :href="item.articleUrl">
+              <router-link :to="item.articleUrl">
                 <span>{{item.title === "" ? getRecommendNoTitle : item.title}}</span>
-              </a>
+              </router-link>
             </div>
             <div class="sidebar-page-time">
               <span>{{getLocalTime(item.pageCreateTime)}}</span>
@@ -177,6 +177,7 @@
 </template>
 
 <script>
+import {withBase} from "@vuepress/client";
 import Catalog from "../Catalog";
 import MobileSidebarNav from "./MobileSidebarNav";
 import HomeSidebarSocialItem from "./HomeSidebarSocialItem";

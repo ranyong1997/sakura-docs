@@ -58,7 +58,7 @@
             <div id="page-sidebar-right" v-if="!frontmatter.home" v-show="showSidebar" class="page-sidebar-right">
               <div class="stickSidebar" v-if="mobilePageSidebar">
                 <HomeSidebar :show-navbar="false"
-                             :sidebar-width-var="0.96"
+                             :sidebar-width-var="0.92"
                              :show-sidebar-social="true"
                              :show-sidebar-link="showSidebarLink"
                              :sidebar-row-var="sidebarRowVar"
@@ -98,11 +98,10 @@ import Navbar from '../../components/Navbar.vue'
 import Home from '../Home'
 import MobileSidebar from "../child/side/MobileSidebar.vue";
 import SocialSpin from '../SocialSpin'
-
 //配置导入
 const tag = require('../../public/js/tag')
 import {computed, defineComponent, Transition,} from 'vue'
-import {usePageData, usePageFrontmatter} from '@vuepress/client'
+import {usePageData, usePageFrontmatter, withBase} from '@vuepress/client'
 import type {DefaultThemePageFrontmatter} from '../../../shared'
 import {useThemeData, useThemeLocaleData} from '../../composables'
 import $ from 'jquery'
@@ -143,7 +142,7 @@ export default defineComponent({
       homeWps: [],
       mobilePageSidebar: true,
       pageYOffset: 0,
-      width: 0
+      width: 0,
     }
   },
   props: {
@@ -268,6 +267,35 @@ export default defineComponent({
     }
   },
   methods: {
+    setHomeBg() {
+      let base = ""
+      if (this.$site.base !== "/") {
+        base = this.$site.base
+      }
+      new Promise((resolve,reject) => {
+        let homeWpsSet = new Set()
+        for (let i = 0; i < this.homeWps.length; i++) {
+          // homeWpsSet.add(withBase(this.homeWps[i]))
+          homeWpsSet.add(base + this.homeWps[i])
+        }
+        resolve(homeWpsSet)
+      }).then((homeWpsSet) => {
+        this.homeWps = Array.from(homeWpsSet)
+        let backgroundUrl = ''
+        if (this.$store.state.homeWps === "") {
+          //将首页壁纸设置为配置文件数组中的第一张图片
+          // backgroundUrl = this.homeWps[0]
+          backgroundUrl = this.homeWps[this.getRandomInt(0,this.homeWps.length -1)]
+        }else {
+          //将首页壁纸设置为配置文件数组中的第一张图片
+          backgroundUrl = this.$store.state.homeWps
+        }
+
+        this.$store.commit("setHomeWps",{
+          homeWps: backgroundUrl
+        })
+      })
+    },
     handleScroll() {
       if (window.pageYOffset > this.pageYOffset) {
         this.showHeaderBg = false
@@ -382,9 +410,6 @@ export default defineComponent({
       this.ico = "https://ooszy.cco.vin/img/ico/cat.svg"
     }
 
-    this.$store.commit("setIsFitter",{
-      isFitter: this.themeProperty.isFitter
-    })
     tag.setTag(this,this.themeProperty).then(() => {
       this.$store.commit('setTagStatus',{
         isSuccess:  true
@@ -430,19 +455,7 @@ export default defineComponent({
       }
     }
 
-    let backgroundUrl = ''
-    if (this.$store.state.homeWps === "") {
-      //将首页壁纸设置为配置文件数组中的第一张图片
-      // backgroundUrl = this.homeWps[0]
-      backgroundUrl = this.homeWps[this.getRandomInt(0,this.homeWps.length -1)]
-    }else {
-      //将首页壁纸设置为配置文件数组中的第一张图片
-      backgroundUrl = this.$store.state.homeWps
-    }
-
-    this.$store.commit("setHomeWps",{
-      homeWps: backgroundUrl
-    })
+    this.setHomeBg()
 
 
     const frontmatter = usePageFrontmatter<DefaultThemePageFrontmatter>()

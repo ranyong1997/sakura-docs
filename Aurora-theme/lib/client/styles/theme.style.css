@@ -946,7 +946,7 @@ a[data-v-d8ec41bc] {
     margin: 0 auto
 }
 
-.medium-zoom-content h1:first-of-type {
+.hide-h1-tag h1:first-of-type {
     display: none
 }
 
@@ -5338,4 +5338,8 @@ body::-webkit-scrollbar-thumb {
     #theme-default-content {
         width: auto;
     }
+}
+
+.catalog-title {
+    cursor: pointer;
 }

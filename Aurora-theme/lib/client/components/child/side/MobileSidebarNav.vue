@@ -38,9 +38,13 @@
             <span class="aurora-nav-font aurora-font" :class="setHomeClass(menuItem)"></span>
           </div>
           <div class="menu-item-right">
-            <a :key="index" :href="menuItem.link">
+
+            <a v-if="getIsOuterLink(menuItem.link)" target="_blank" :key="index" :href="menuItem.link">
               <span>{{menuItem.text}}</span>
             </a>
+            <router-link v-else :to="menuItem.link" :data="getNavHref(menuItem.link)">
+              <span>{{menuItem.text}}</span>
+            </router-link>
           </div>
         </div>
       </div>
@@ -285,6 +289,17 @@ export default {
     },
   },
   computed: {
+    getNavHref() {
+      return (link) => {
+        let re = new RegExp("^"+this.$site.base);
+        if (re.test(link)) {
+          //link中已经带有base
+          return link
+        }else {
+          return this.$site.base + link
+        }
+      }
+    },
     getIsOuterLink() {
       return (item) => {
         let reg=/^([hH][tT]{2}[pP]:\/\/|[hH][tT]{2}[pP][sS]:\/\/)(([A-Za-z0-9-~]+)\.)+([A-Za-z0-9-~\/])+$/;

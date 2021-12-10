@@ -1,7 +1,7 @@
 <template>
   <div class="home" :style="getHomeHeight">
     <div class="home-hero-img" :class="{'home-hero-img-custom ': isHome}" id="home-hero-img">
-      <img :src="getHeroImg" alt="">
+      <img :src="getHeroImg">
     </div>
     <slot name="home1"></slot>
     <div v-if="randomSawRes" :class="{'home-random-say-custom': isHome}" class="home-random-say">
@@ -39,6 +39,7 @@
 <script lang="ts">
 import { computed, defineComponent } from 'vue'
 import { usePageFrontmatter, useSiteLocaleData, withBase} from '@vuepress/client'
+
 import { isArray } from '@vuepress/shared'
 import type { DefaultThemeHomePageFrontmatter } from '../../shared'
 import NavLink from './NavLink.vue'
@@ -46,6 +47,7 @@ import HomeSocial from './child/home/HomeSocial.vue'
 import EasyTyper from "easy-typer-js";
 import HomeSidebarSocialItem from './child/side/HomeSidebarSocialItem'
 import {useThemeLocaleData} from "../composables";
+import axios from "axios";
 //导入配置属性
 const network = require('../public/js/network.js')
 export default defineComponent({
@@ -59,9 +61,9 @@ export default defineComponent({
     return {
       socialsArrTemp: [],
       networkOption: {
-        baseURL: '',
+        baseURL: 'https://v1.hitokoto.cn/?encode=text&c=j',
         timeout: 5000,
-        method: 'get',
+        method: 'GET',
         query: '',
       },
       randomSawRes: '',
@@ -85,6 +87,12 @@ export default defineComponent({
     }
   },
   props: {
+    showRandomSay:{
+      type: Boolean,
+      default() {
+        return false
+      }
+    },
     showPrintText: {
       type: Boolean,
       default() {
@@ -231,21 +239,12 @@ export default defineComponent({
       })
     }
 
-    if (this.themeProperty.randomSaw !== undefined) {
-      this.networkOption.baseURL = this.themeProperty.randomSaw
-    }else {
-      this.networkOption.baseURL = 'https://international.v1.hitokoto.cn/?c=b&max_length=45'
-    }
-    if (this.themeProperty.randomSawQuery !== undefined) {
-      this.networkOption.query = this.themeProperty.randomSawQuery
-    }else {
-      this.networkOption.query = "hitokoto"
-    }
+    if (this.themeProperty.randomSayApi !== undefined) {
+      this.networkOption.baseURL = this.themeProperty.randomSayApi.urlApi
 
-    if (this.themeProperty.method !== undefined) {
-      this.networkOption.method = this.themeProperty.method
-    }else {
-      this.networkOption.method = "GET"
+      if (this.themeProperty.randomSayApi.method !== undefined) {
+        this.networkOption.method = this.themeProperty.randomSayApi.method
+      }
     }
 
     this.fetchData()
@@ -317,6 +316,12 @@ export default defineComponent({
       return Math.floor(Math.random() * (max - min)) + min; //不含最大值，含最小值
     },
     fetchData() {
+      if (!this.isHome) {
+        if (!this.showRandomSay) {
+          return
+        }
+      }
+
       if (this.themeProperty.customRandomSay) {
         this.randomSawRes = this.themeProperty.customRandomValue === undefined ||
         this.themeProperty.customRandomValue == null ? "Aurora theme" : this.themeProperty.customRandomValue
@@ -328,8 +333,7 @@ export default defineComponent({
       }else {
         network.req(this.networkOption).then(res => {
           try {
-            const dataQuery = this.networkOption.query
-            this.randomSawRes = res[dataQuery];
+            this.randomSawRes = res;
             const typed = this.initTyped(this.randomSawRes,() => {
               setTimeout(() => {
                 this.fetchData()
@@ -364,7 +368,7 @@ export default defineComponent({
         console.warn("%c you need to set the heroImg field value,the default is: https://ooszy.cco.vin/img/blog-public/avatar.jpg","color: pink;")
         return "https://ooszy.cco.vin/img/blog-public/avatar.jpg"
       }else {
-        return  src
+        return  withBase(src)
       }
     },
     getHomeHeight() {
