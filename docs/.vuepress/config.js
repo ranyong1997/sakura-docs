@@ -38,7 +38,8 @@ module.exports = {
         [
             path.resolve(__dirname, "../../Aurora-plugin/vuepress-plugin-player/lib/node/index.js"),
             {
-                showPlaylist: true,
+                showPlaylist: true,// 是否展示播放
+                disableSpace: true,//禁用空格键
                 //是否禁用网易云音乐，如果你选择禁用，那么就将使用本地的歌曲，请传入链接
                 disabledNetEaseMusic: true,
                 //本地歌曲
