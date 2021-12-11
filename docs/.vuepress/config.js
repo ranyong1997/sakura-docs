@@ -804,17 +804,16 @@ module.exports = {
 
         //首页背景图片数组，考虑到使用随机图片，打开网站速度变慢，所以移除随机图片，使用自己设置的图片链接
         homeWps: [
-            'https://raw.githubusercontent.com/ranyong1997/image_collect/main/img/20211113231622.jpeg',
-            "https://raw.githubusercontent.com/ranyong1997/image_collect/main/img/20211113231621.jpeg",
-            "https://raw.githubusercontent.com/ranyong1997/image_collect/main/img/20211113231620.jpeg",
+            'https://gitee.com/ran_yong/mark-down-table-upload/raw/master/img/20211113231622.jpeg',
+            "https://gitee.com/ran_yong/mark-down-table-upload/raw/master/img/20211113231621.jpeg",
         ],
 
         //手机端首页背景图片
         homeWpsMobile: [
-            "https://raw.githubusercontent.com/ranyong1997/image_collect/main/img/20211113231019.jpeg",
-            "https://raw.githubusercontent.com/ranyong1997/image_collect/main/img/20211113231018.jpeg",
-            "https://raw.githubusercontent.com/ranyong1997/image_collect/main/img/20211113231017.jpeg",
-            "https://raw.githubusercontent.com/ranyong1997/image_collect/main/img/20211113231016.jpeg"
+            "https://gitee.com/ran_yong/mark-down-table-upload/raw/master/img/20211113231019.jpeg",
+            "https://gitee.com/ran_yong/mark-down-table-upload/raw/master/img/20211113231018.jpeg",
+            "https://gitee.com/ran_yong/mark-down-table-upload/raw/master/img/20211113231017.jpeg",
+            "https://gitee.com/ran_yong/mark-down-table-upload/raw/master/img/20211113231016.jpeg"
         ],
 
         //首页文章显示条数，默认为4，此值不推荐设置太大
