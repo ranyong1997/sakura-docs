@@ -161,6 +161,12 @@ module.exports = {
                             '/Back-end/fastapi.md'
                         ]
                     },
+                    {
+                        text: 'Python基础',
+                        children: [
+                            '/Other/python基础学习.md'
+                        ]
+                    },
                 ]
             },
             {

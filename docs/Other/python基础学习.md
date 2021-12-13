@@ -1,3 +1,9 @@
+---
+date: "2021/12/12"
+categories: [Python]
+tag: [Python基础]
+---
+
 # python基础学习
 
 ## python基础
