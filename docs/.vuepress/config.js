@@ -164,7 +164,7 @@ module.exports = {
                     {
                         text: 'Python基础',
                         children: [
-                            '/Other/python基础学习.md'
+                            '/Back-end/python基础学习.md'
                         ]
                     },
                 ]
@@ -189,6 +189,12 @@ module.exports = {
                         text: '宝塔配置HTTPS',
                         children: [
                             '/Other/宝塔配置HTTPS.md'
+                        ]
+                    },
+                    {
+                        text: 'Node后台运行',
+                        children: [
+                            '/Other/在linux中持续运行Node.js文件.md'
                         ]
                     },
                 ]
