@@ -197,6 +197,12 @@ module.exports = {
                             '/Other/在linux中持续运行Node.js文件.md'
                         ]
                     },
+                    {
+                        text: 'Mac安装Scrcpy投屏软件',
+                        children: [
+                            '/Other/Mac安装scrcpy投屏软件.md'
+                        ]
+                    },
                 ]
             },
             {
