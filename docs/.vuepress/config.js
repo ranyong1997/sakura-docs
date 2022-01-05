@@ -167,6 +167,12 @@ module.exports = {
                             '/Back-end/python基础学习.md'
                         ]
                     },
+                    {
+                        text: 'Go基础',
+                        children: [
+                            '/Back-end/Go基础学习.md'
+                        ]
+                    }
                 ]
             },
             {

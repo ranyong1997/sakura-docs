@@ -1,3 +1,9 @@
+---
+date: "2021/12/21"
+categories: [服务端]
+tag: [Scrcpy,投屏软件]
+---
+
 # Mac M1芯 安装scrcpy投屏软件
 
 ## 操作步骤：
