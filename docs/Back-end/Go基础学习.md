@@ -1,6 +1,10 @@
+---
 date: "2022/01/01"
 categories: [后端]
 tag: [Go]
+---
+
+
 
 # Go基础学习
 
@@ -4907,3 +4911,2102 @@ test panic
 
 go test命令会遍历所有的`*_test.go`文件中符合上述命名规则的函数，然后生成一个临时的main包用于调用相应的测试函数，然后构建并运行、报告测试结果，最后清理测试中生成的临时文件。
 
+Golang 单元测试对文件名和方法名，参数都很严格的要求。
+
+- 文件名必须以xx_test.go命名
+- 方法必须是`Test[^a-z]`开头
+- 方法参数必须 t *testing.T
+- 使用go test执行单元测试
+
+go test的参数解读：
+go test 是go语言自带的测试工具，其中包含的是两类，单元测试和性能测试
+
+通过go help test可以看到go test的使用说明：
+
+```go
+格式形如：go test [-c] [-i] [build flags] [packages] [flags for test binary]
+```
+
+参数解读：
+
+- -c 编译go test称为可执行的二进制文件，但是不运行测试。
+
+- -i 安装测试包依赖的package，但是不运行测试
+
+> 关于build flags，调用go help build，这些是编译运行过程中需要用到的参数，一般设置为空。
+>
+> 关于packages，调用go help packages，这些是关于包的管理，一般设置为空
+>
+> 关于flags for binary，调用go help testflag，这些是go test过程中经常使用到的参数
+>
+> - test.v：是否输出全部的单元测试用例（不管成功或者失败），默认没有加上，所以只输出失败的单元测试用例。
+> - test.run pattern：只跑那些单元测试用例
+> - test.bench patten：只跑那些性能测试用例
+> - test.benchmem：是否在性能测试的时候输出内存情况
+> - test.benchtime t：性能测试运行的时间，默认是1s
+> - test.cpuprofile cpu.out：是否输出cpu性能分析文件
+> - test.memprofile mem.out：是否输出内存性能分析文件
+> - test.blockprofile block.out：是否输出内部goroutine阻塞的性能分析文件
+> - test.memprofilerate n：内存性能分析的时候有一个分配了多少的时候打点记录。
+>
+> 可以通过设置memprofilerate=1和GOGC=off来关闭内存回收，并且对每个内存块的分配进行观察。
+>
+> - test.blockprofilerate n：基本同上，控制的是goroutine阻塞时候打点的纳秒数。
+
+目录结构：
+
+```
+   test
+      |
+       —— calc.go
+      |
+       —— calc_test.go
+```
+
+#### 测试函数
+
+> 测试函数的格式
+
+每个测试函数必须导入testing包，测试函数的基本格式如下：
+
+```go
+func TestName(t *testing.T){
+  // ...
+}
+```
+
+测试函数的名字必须以Test开头，可选的后缀名必须以答谢字母开头，举个例子：
+
+```go
+func TestAdd(t *testing.T){ ... }
+func TestSum(t *testing.T){ ... }
+func TestLog(t *testing.T){ ... }
+```
+
+其中参数t用于报告测试失败和附加的日志信息。testing.T的拥有的方法如下：
+
+```go
+func (c *T) Error(args ...interface{})
+func (c *T) Errorf(format string, args ...interface{})
+func (c *T) Fail()
+func (c *T) FailNow()
+func (c *T) Failed() bool
+func (c *T) Fatal(args ...interface{})
+func (c *T) Fatalf(format string, args ...interface{})
+func (c *T) Log(args ...interface{})
+func (c *T) Logf(format string, args ...interface{})
+func (c *T) Name() string
+func (t *T) Parallel()
+func (t *T) Run(name string, f func(t *T)) bool
+func (c *T) Skip(args ...interface{})
+func (c *T) SkipNow()
+func (c *T) Skipf(format string, args ...interface{})
+func (c *T) Skipped() bool
+```
+
+测试函数示例：
+
+> 定义一个split的包，包中定义一个Split函数，具体实现如下：
+
+```go
+// split/split.go
+
+package split
+
+import "strings"
+
+
+func Split(s, sep string) (result []string) {
+    i := strings.Index(s, sep)
+
+    for i > -1 {
+        result = append(result, s[:i])
+        s = s[i+1:]
+        i = strings.Index(s, sep)
+    }
+    result = append(result, s)
+    return
+}
+```
+
+在当前目录下，我们创建了一个split_test.go的测试文件，并定义一个测试函数如下：
+
+```go
+// split/split_test.go
+
+package split
+
+import (
+    "reflect"
+    "testing"
+)
+
+func TestSplit(t *testing.T) { // 测试函数名必须以Test开头，必须接收一个*testing.T类型参数
+    got := Split("a:b:c", ":")         // 程序输出的结果
+    want := []string{"a", "b", "c"}    // 期望的结果
+    if !reflect.DeepEqual(want, got) { // 因为slice不能比较直接，借助反射包中的方法比较
+        t.Errorf("excepted:%v, got:%v", want, got) // 测试失败输出错误提示
+    }
+}
+```
+
+此时split这个包中的文件如下：
+
+```go
+❯ ls -l
+total 16
+-rw-r--r--  1 ranyong  staff  287 Jan 30 13:19 split.go
+-rw-r--r--  1 ranyong  staff  466 Jan 30 13:18 split_test.go
+```
+
+在split包路径下，执行go test命令，可以看到输出结果如下：
+
+```go
+❯ go test
+PASS
+ok      demo/bin/split  0.173s
+```
+
+#### 测试组
+
+> 我们现在还想要测试一下split函数对中文字符串的支持，这个时候我们可以再编写一个TestChineseSplit测试函数，但是我们也可以使用如下更好的一种方式来添加更多的测试用例。
+
+```go
+```
+
+### 压力测试
+
+#### Go怎么写测试用例
+
+> Go语言中自带有一个轻量级的测试框架testing和自带的go test命令来实现单元测试和性能测试，testing框架和其他语言中的测试框架类似
+
+另外建议安装gotests插件自动生成测试代码：
+
+```go
+go get -u -v github.com/cweill/gotests/...
+```
+
+#### 如何编写测试用例
+
+> 由于go test命令只能在一个相应的目录下执行所有文件，所以我们接下来新建一个目录gotest，这样我们所有的代码和测试代码都在这个目录下。
+>
+> 接下来我们在该目录下面创建两个文件：gotest.go和gotest_test.go
+
+gotest.go：这个文件里面我们创建了一个包，里面有一个函数实现了除法运算：
+
+## 方法
+
+### 方法的定义
+
+> Golang方法总是绑定对象实例，并隐式将实例作为第一个实参。
+
+- 只能为当前包内命名类型定义方法
+- 参数receiver可任意命名。如方法中为曾使用，可省略参数名。
+- 参数receiver类型可以是T或*T。基类型T不能是借口或指针。
+- 不支持方法重载，receiver只是参数签名的组成部分。
+- 可以实例value或pointer调用全部方法，编译器自动转换。
+
+一个方法就是一个包含了接收者的函数，接收者可以是命名类型活着结构体类型的一个值或者是一个指针。
+
+所有给定义的方法属于该类型的方法集。
+
+#### 方法的定义
+
+```go
+func (recevier type) methodName(参数列表)(返回值列表){}
+
+参数和返回值可以省略
+```
+
+举个例子：
+
+```go
+package main
+
+type Test struct {
+}
+
+// 无参数、无返回值
+func (t Test) method0() {
+
+}
+
+// 单参数、无返回值
+func (t Test) method1(i int) {
+}
+
+// 多参数、无返回值
+func (t Test) method2(x, y int) {
+
+}
+
+// 无参数、单返回值
+func (t Test) method3() (i int) {
+	return
+}
+
+// 多参数，多返回值
+func (t Test) method4() (i int) {
+	return
+}
+
+// 无参数、无返回值
+func (t *Test) method5() {
+
+}
+
+// 单参数、无返回值
+func (t *Test) method6(i int) {
+
+}
+
+// 多参数、无返回值
+func (t *Test) method7(x, y int) {
+
+}
+
+// 无参数、单返回值
+func (t *Test) method8() (i int) {
+	return
+}
+
+// 多参数、多返回值
+func (t *Test) method9(x, y int) (z int, err error) {
+	return
+}
+
+func main() {
+	
+}
+```
+
+下面定义一个结构体类型和该类型的一个方法：
+
+```go
+package main
+
+import "fmt"
+
+// 结构体
+type User struct {
+	Name  string
+	Email string
+}
+
+// 方法
+func (u User) Notify() {
+	fmt.Printf("%v:%v \n", u.Name, u.Email)
+}
+func main() {
+	// 值类型调用方法
+	u1 := User{"golang", "golang@golang.com"}
+	u1.Notify()
+	// 指针类型调用方法
+	u2 := User{"go", "go@go.com"}
+	u3 := &u2
+	u3.Notify()
+}
+```
+
+运行结果：
+
+```go
+golang:golang@golang.com 
+go:go@go.com 
+```
+
+首先我们定义一个叫做User的结构体类型，然后定义了一个该类型的方法叫做Notify，该方法的接收者是一个User类型的值。要调用Notify方法我们需要一个User类型的值。要调用Notify方法我们需要一个User类型的值或者指针。
+
+在这个例子中当我们使用指针时，Go调整和解引用指针使得调用可以被执行。注意，当接收者不是一个指针时，该方法操作对应接收者的值的副本。
+
+我们修改Notify方法，让它的接收者使用指针类型：
+
+```go
+package main
+
+import "fmt"
+
+// 结构体
+type User struct {
+	Name  string
+	Email string
+}
+
+// 方法
+func (u *User) Notify() {
+	fmt.Printf("%v:%v \n", u.Name, u.Email)
+}
+func main() {
+	// 值类型调用方法
+	u1 := User{"golang", "golang@golang.com"}
+	u1.Notify()
+	// 指针类型调用方法
+	u2 := User{"go", "go@go.com"}
+	u3 := &u2
+	u3.Notify()
+}
+```
+
+运行结果：
+
+```go
+golang:golang@golang.com 
+go:go@go.com 
+```
+
+注意：当接收者是指针时，即使用值类型调用那么函数内部也是对指针的操作。
+
+方法不过是一种特殊函数，只需将其还原，就知道`receiver T`和`*T`的差别
+
+```go
+package main
+
+import "fmt"
+
+type Data struct {
+	x int
+}
+
+func (self Data) ValueTest() {
+	fmt.Printf("Value:%p\n", &self)
+}
+
+func (self *Data) PointerTest() {
+	fmt.Printf("Pointer:%p\n", self)
+}
+
+func main() {
+	d := Data{}
+	p := &d
+	fmt.Printf("Data: %p\n", p)
+	d.ValueTest()
+	d.PointerTest()
+	p.ValueTest()
+	p.PointerTest()
+}
+```
+
+运行结果：
+
+```go
+Data: 0xc0000b2008
+Value:0xc0000b2018
+Pointer:0xc0000b2008
+Value:0xc0000b2020
+Pointer:0xc0000b2008
+```
+
+#### 普通函数与方法的区别
+
+- 对于普通函数，接收者为值类型时，不能将指针类型的数据直接传递，反之亦然。
+- 对于方法(如struct方法)，接收者为值类型时，可以直接用指针类型的变量调用方法，反过来同样也可以。
+
+```go
+package main
+
+import "fmt"
+
+// 1.普通函数
+// 接收值类型参数的函数
+func valueIntTest(a int) int {
+	return a + 10
+}
+
+// 接收者指针类型参数的函数
+func pointerIntTest(a *int) int {
+	return *a + 10
+}
+
+func structTestValue() {
+	a := 2
+	fmt.Println("valueIntTest:", valueIntTest(a))
+	// 函数的参数为值类型，则不能直接将指针作为参数传递
+
+	b := 5
+	fmt.Println("pointerIntTest:", pointerIntTest(&b))
+	// 同样，当函数的参数为指针类型时，也不能直接将值类型作为参数传递
+}
+
+// 2.方法
+type PersonD struct {
+	id   int
+	name string
+}
+
+// 接收者为值类型
+func (p PersonD) valueShowName() {
+	fmt.Println(p.name)
+}
+
+// 接收者为指针类型
+func (p *PersonD) pointShowName() {
+	fmt.Println(p.name)
+}
+
+func structTestFunc() {
+	// 值类型调用方法
+	personValue := PersonD{101, "hello world"}
+	personValue.valueShowName()
+	personValue.pointShowName()
+	// 指针类型调用方法
+	personPointer := &PersonD{102, "hello golang"}
+	personPointer.valueShowName()
+	personPointer.pointShowName()
+}
+
+func main() {
+	structTestValue()
+	structTestFunc()
+}
+```
+
+运行结果：
+
+```go
+valueIntTest: 12
+pointerIntTest: 15
+hello world
+hello world
+hello golang
+hello golang
+```
+
+#### 匿名字段
+
+> Golang你名字段：可以像字段成员那样访问匿名字段方法，编译器负责查找。
+
+```go
+package main
+
+import "fmt"
+
+type User struct {
+	id   int
+	name string
+}
+
+type Manager struct {
+	User
+}
+
+func (self *User) ToString() string {
+	return fmt.Sprintf("User:%p,%v", self, self)
+}
+func main() {
+	m := Manager{User{1, "Tom"}}
+	fmt.Printf("Manager: %p\n", &m)
+	fmt.Println(m.ToString())
+}
+```
+
+运行结果：
+
+```go
+Manager: 0xc0000a4018
+User:0xc0000a4018,&{1 Tom}
+```
+
+通过匿名字段，可获得和继承类似的复用能力。依据编译器查找次序，只需在外层定义同名方法，就可以实现"override"。
+
+```go
+package main
+
+import "fmt"
+
+type User struct {
+	id   int
+	name string
+}
+type Manager struct {
+	User
+	title string
+}
+
+func (self *User) ToString() string {
+	return fmt.Sprintf("User:%p,%v", self, self)
+}
+
+func (self *Manager) ToString() string {
+	return fmt.Sprintf("Manager: %p,%v", self, self)
+}
+
+func main() {
+	m := Manager{User{1, "Tom"}, "Administrator"}
+	fmt.Println(m.ToString())
+	fmt.Println(m.User.ToString())
+}
+```
+
+运行结果：
+
+```go
+Manager: 0xc00006c180,&{{1 Tom} Administrator}
+User:0xc00006c180,&{1 Tom}
+```
+
+#### 方法集
+
+> Golang方法集：每个类型都有与之关联的方法集，这会影响到接口实现规则。
+
+- 类型 T 方法集包含全部 receiver T 方法。
+- 类型 *T 方法集包含全部 receiver T + *T 方法。
+- 如类型 S 包含匿名字段 T，则 S 和 *S 方法集包含 T 方法。
+- 如类型 S 包含匿名字段 *T，则 S 和 *S 方法集包含 T + *T 方法。
+- 不管嵌入 T 或 *T， *S 方法集总是包含 T + *T 方法。
+
+用实例 value 和 pointer 调用方法不受方法集约束，编译器总是查找全部方法，并自定转换receiver实惨。
+
+Go语言中内部类型方法集提升的规则：
+
+类型T方法集包含全部receiver T方法。
+
+```go
+package main
+
+import "fmt"
+
+type T struct {
+	int
+}
+
+func (t T) test() {
+	fmt.Println("类型 T 方法集包含全部 receiver T 方法。")
+}
+
+func main() {
+	t1 := T{1}
+	fmt.Printf("t1 is : %v\n", t1)
+	t1.test()
+}
+```
+
+运行结果：
+
+```go
+t1 is : {1}
+类型 T 方法集包含全部 receiver T 方法。
+```
+
+#### 表达式
+
+> Golang 表达式：根据调用者不同，方法分为两种表现形式：
+
+```go
+instance.method(args...) ---> <type>.func(instance, args...)
+```
+
+前者称为method value，后者method expression。
+
+两者都可以像普通函数那样赋值和传参，区别在于method value 绑定实例，而method expression则须显式传参。
+
+```go
+package main
+
+import "fmt"
+
+type User struct {
+	id   int
+	name string
+}
+
+func (self *User) Test() {
+	fmt.Printf("%p,%v\n", self, self)
+}
+func main() {
+	u := User{1, "Tom"}
+	u.Test()
+	mValue := u.Test
+	mValue() // 隐式传递 receiver
+
+	mExpression := (*User).Test
+	mExpression(&u) // 显式传递 receiver
+}
+```
+
+运行结果：
+
+```go
+0xc0000a4018,&{1 Tom}
+0xc0000a4018,&{1 Tom}
+0xc0000a4018,&{1 Tom}
+```
+
+需要注意，method value会复制receiver。
+
+```go
+package main
+
+import "fmt"
+
+type User struct {
+	id   int
+	name string
+}
+
+func (self User) Test() {
+	fmt.Println(self)
+}
+
+func main() {
+	u := User{1, "Tom"}
+	mValue := u.Test // 立即复制 receiver，因为不是指针类型，不受后续修改影响。
+
+	u.id, u.name = 2, "Jack"
+	u.Test()
+	mValue()
+}
+```
+
+运行结果：
+
+```go
+{2 Jack}
+{1 Tom}
+```
+
+在汇编层面，method value 和闭包的实现方式不同，实际返回FuncVal类型对象。
+
+```go
+FuncVal { method_address, receiver_copy }
+```
+
+可依据方法集转换 method expression，注意receiver类型的差异。
+
+```go
+package main
+
+import "fmt"
+
+type User struct {
+	id   int
+	name string
+}
+
+func (self *User) TestPointer() {
+	fmt.Printf("TestPointer: %p,%v\n", self, self)
+}
+
+func (self User) TestValue() {
+	fmt.Printf("TestValue: %p,%v\n", &self, self)
+}
+func main() {
+	u := User{1, "Tom"}
+	fmt.Printf("User: %p ,%v\n", &u, u)
+
+	mv := User.TestValue
+	mv(u)
+
+	mp := (*User).TestPointer
+	mp(&u)
+	
+	mp2 := (*User).TestValue
+	mp2(&u)
+}
+```
+
+运行结果：
+
+```go
+User: 0xc00000c030 ,{1 Tom}
+TestValue: 0xc00000c060,{1 Tom}
+TestPointer: 0xc00000c030,&{1 Tom}
+TestValue: 0xc00000c0a8,{1 Tom}
+```
+
+#### 自定义error
+
+##### 抛异常和处理异常
+
+`系统抛`
+
+```go
+package main
+
+import "fmt"
+
+func test01() {
+	a := [5]int{0, 1, 2, 3, 4}
+	a[1] = 123
+	fmt.Println(a)
+	index := 10
+	a[index] = 10
+	fmt.Println(a)
+}
+
+func getCircleArea(radius float32) (area float32) {
+	if radius < 0 {
+		panic("半径不能为负")
+	}
+	return 3.14 * radius * radius
+}
+
+func test02() {
+	getCircleArea(-5)
+}
+
+func test03() {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+	getCircleArea(-5)
+	fmt.Println("这里有没有执行")
+}
+
+func test04() {
+	test03()
+	fmt.Println("test04")
+}
+
+func main() {
+	test04()
+}
+```
+
+运行结果：
+
+```go
+半径不能为负
+test04
+```
+
+`返回异常`
+
+```go
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+func getCircleArea(radius float32) (area float32, err error) {
+	if radius < 0 {
+		// 构建个异s对象
+		err = errors.New("半径不能为负")
+		return
+	}
+	area = 3.14 * radius * radius
+	return
+}
+func main() {
+	area, err := getCircleArea(-5)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(area)
+	}
+}
+```
+
+运行结果：
+
+```go
+半径不能为负
+```
+
+`自定义error`
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+	"time"
+)
+
+type PathError struct {
+	path       string
+	op         string
+	createTime string
+	message    string
+}
+
+func (p *PathError) Error() string {
+	return fmt.Sprintf("path= %s \nop=%s \ncreateTime=%s", p.path,
+		p.op, p.createTime, p.message)
+}
+
+func Open(filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return &PathError{
+			path:       filename,
+			op:         "read",
+			message:    err.Error(),
+			createTime: fmt.Sprintf("%v", time.Now()),
+		}
+	}
+	defer file.Close()
+	return nil
+}
+func main() {
+	err := Open("/Users/demo/Desktop/go/src/test.txt")
+	switch v := err.(type) {
+	case *PathError:
+		fmt.Println("get path error,", v)
+	default:
+
+	}
+}
+```
+
+运行结果：
+
+```go
+get path error, path= /Users/demo/Desktop/go/src/test.txt 
+op=read 
+createTime=2022-02-07 17:50:17.065474 +0800 CST m=+0.000087501%!(EXTRA string=open /Users/demo/Desktop/go/src/test.txt: no such file or directory)
+```
+
+## 接口
+
+> Go支持只提供类型而不写字段名的方式，也就是匿名字段，也称为嵌入字段
+
+```go
+package main
+
+import "fmt"
+
+// 人
+type Person struct {
+	name string
+	sex  string
+	age  int
+}
+
+type Student struct {
+	Person
+	id   int
+	addr string
+}
+
+func main() {
+	// 初始化
+	s1 := Student{Person{"ranyong", "man", 20}, 1, "SZ"}
+	fmt.Println(s1)
+	s2 := Student{Person: Person{"ranyong", "man", 20}}
+	fmt.Println(s2)
+	s3 := Student{Person: Person{name: "ranyong"}}
+	fmt.Println(s3)
+}
+```
+
+运行结果：
+
+```go
+{{ranyong man 20} 1 SZ}
+{{ranyong man 20} 0 }
+{{ranyong  0} 0 }
+```
+
+同名字段的情况
+
+```go
+package main
+
+import "fmt"
+
+type Person struct {
+	name string
+	sex  string
+	age  int
+}
+
+type Student struct {
+	Person
+	id   int
+	addr string
+	// 同名字段
+	name string
+}
+
+func main() {
+	var s Student
+	// 给自己字段赋值
+	s.name = "ranyong"
+	fmt.Println(s)
+	// 若给父类同名字段赋值，如下
+	s.Person.name = "枯藤"
+	fmt.Println(s)
+}
+```
+
+运行结果：
+
+```go
+{{  0} 0  ranyong}
+{{枯藤  0} 0  ranyong}
+```
+
+所有的内置类型和自定义类型都是可以作为匿名字段去使用
+
+```go
+package main
+
+import "fmt"
+
+// 人
+type Person struct {
+	name string
+	sex  string
+	age  int
+}
+
+// 自定义类型
+type mystr string
+
+// 学生
+type Student struct {
+	Person
+	int
+	mystr
+}
+
+func main() {
+	s1 := Student{Person{"ranyong", "man", 20}, 1, "SZ"}
+	fmt.Println(s1)
+}
+```
+
+运行结果：
+
+```go
+{{ranyong man 20} 1 SZ}
+```
+
+指针类型匿名字段
+
+```go
+package main
+
+import "fmt"
+
+// 人
+type Person struct {
+	name string
+	sex  string
+	age  int
+}
+
+// 学生
+type Student struct {
+	*Person
+	id   int
+	addr string
+}
+
+func main() {
+	s1 := Student{&Person{"ranyong", "man", 20}, 1, "SZ"}
+	fmt.Println(s1)
+	fmt.Println(s1.name)
+	fmt.Println(s1.Person.name)
+}
+```
+
+运行结果：
+
+```go
+{0xc00006c180 1 SZ}
+ranyong
+ranyong
+```
+
+## 网络编程
+
+### 互联网协议介绍
+
+> 互联网的核心是一系列协议，总成为"互联网协议"，正是这一些协议规定了电脑如何连接和组网。我们理解了这些协议，就理解了互联网的原理。
+
+### 互联网分层模型
+
+> 互联网的逻辑实现被分为好几层。每一层都有自己的功能
+
+![分层模型](https://gitee.com/ran_yong/mark-down-table-upload/raw/master/img/1-20220207181924848.png)
+
+如上图所示，互联网按照不同的模型划分会有不同的分层，但是不论按照什么模型去划分，越往上的层越靠近用户，越往下的层越靠近硬件。
+
+`物理层`
+
+> 我们的电脑要与外界互联通行，需要先把电脑连接网络，我们可以用双绞线、光纤、无线电波等等方式。这就叫做“实物理层”，他就是把电脑连接起来的物理手段。它主要规定了网络的一些电气特性，作用是负责传送0和1的电信号。
+
+`数据联络层`
+
+> 单纯的0和1没有任何意义，所以我们使用者会为其赋予一些特定的含义，规定解读电信号的方式：例如：多少个电信号一组？每个信号位有何意义？这就是“数据链接层”的功能，它在“物理层”的上方，确定了物理层传输的0和1的分组方式即代表的意义。
+
+`网络层`
+
+>
+
+`传输层`
+
+> 
+
+`应用层`
+
+> 应用程序收到“传输层”的数据，接下来就要对数据进行解包。由于互联网是开放架构，数据来源五花八门，必须事先规定好通信的数据格式，否则接收方根本无法获得真正的数据内容。“应用层”的作用就是规定应用程序使用的数据格式，例如我们TCP协议之上常见的Email、HTTP、FTP等协议，这些协议就组成了互联网协议的应用层。
+
+![应用层](https://gitee.com/ran_yong/mark-down-table-upload/raw/master/img/2.png)
+
+### socket编程
+
+> Socket是BSD UNIX的进程通信机制，通常也称为“套接字”，用于描述IP地址和端口，是一个通行链的句柄。Socket可以理解为TCP/IP网络的API，它定义了许多函数或例程，程序员可以用它们来开发TCP/IP网络上的应用程序。
+
+### socket图解
+
+>Socket是应用层与TCP/IP协议族通信的中间软件抽象层。在设计模式中，Socket其实就是一个门面模式，它把复杂的TCP/IP协议族隐藏在Socket后面，对用户来说只需要调用Socket规定的相关函数，让Socket去组织符合指定的协议数据然后进行通行。
+
+![socket图解](https://gitee.com/ran_yong/mark-down-table-upload/raw/master/img/3.png)
+
+- Socket 又称"套接字"，应用程序通常通过“套接字”向网络发出请求活着答应网络请求
+- 常用的Socket类型有两种：流式Socket和数据报式Socket，流式式一种面向连接的Socket，针对于面向连接的TCP服务应用，数据报式Socket式一种无连接的Socket，针对于无连接的UDP服务应用。
+- TCP：比较靠谱，面向连接，比较慢
+- UDP：不是太靠谱，比较快
+
+举个例子：TCP就像货到付款的快递，送到家还必须见到你人才算一整套流程。UDP就像某个快递柜一扔就走管你收不收得到。一般直播用UDP。
+
+### TCP协议
+
+>TCP/IP即传输控制协议/网间协议，是一种面向连接的、可靠的、基于字节流的传输层通信协议，因为是面向连接的协议，数据想水流一样传输，会存在黏包问题。
+
+### TCP服务端
+
+> 一个TCP服务端可以同时连接很多个客户端，例如世界各地的用户使用电脑上的浏览器访问淘宝。因为Go语言中创建多个goroutine实现并发非常方便和高效，所以我们可以每建立一次链接创建一个goroutine去处理。
+
+TCP服务端程序的处理流程：
+
+- 监听端口
+- 接收客户端请求建立链接
+- 创建goroutine处理链接
+
+我们使用Go语言的net包实现的TCP服务端代码如下：
+
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"net"
+)
+
+// 处理函数
+func process(conn net.Conn) {
+	defer conn.Close() // 关闭连接
+	for {
+		reader := bufio.NewReader(conn)
+		var buf [128]byte
+		n, err := reader.Read(buf[:])
+		if err != nil {
+			fmt.Println("read form client failed, err:", err)
+			break
+		}
+		recvStr := string(buf[:n])
+		fmt.Println("收到client端发来的数据：", recvStr)
+		conn.Write([]byte(recvStr)) // 发送数据
+	}
+}
+
+func main() {
+	listen, err := net.Listen("tcp", "127.0.0.1:20000")
+	if err != nil {
+		fmt.Println("listen failed, err:", err)
+		return
+	}
+	for {
+		conn, err := listen.Accept() // 建立连接
+		if err != nil {
+			fmt.Println("accept failed, err:", err)
+			continue
+		}
+		go process(conn) // 启动一个goroutine处理连接
+	}
+}
+```
+
+将上面的代码保存之后编译成server或server.exe可执行文件。
+
+### TCP客户端
+
+> 一个TCP客户端进行TCP通信的流程如下：
+
+- 建立于服务端的链接
+- 进行数据收发
+- 关闭链接
+
+使用Go语言的net包实现的TCP客户端代码如下：
+
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"net"
+	"os"
+	"strings"
+)
+
+// 客户端
+func main() {
+	conn, err := net.Dial("tcp", "127.0.0.1:20000")
+	if err != nil {
+		fmt.Println("err :", err)
+		return
+	}
+	defer conn.Close() // 关闭连接
+	inputReader := bufio.NewReader(os.Stdin)
+	for {
+		input, _ := inputReader.ReadString('\n') // 读取用户输入
+		inputInfo := strings.Trim(input, "\r\n")
+		if strings.ToUpper(inputInfo) == "Q" { // 如果输入q就退出
+			return
+		}
+		_, err = conn.Write([]byte(inputInfo)) // 发送数据
+		if err != nil {
+			return
+		}
+		buf := [512]byte{}
+		n, err := conn.Read(buf[:])
+		if err != nil {
+			fmt.Println("recv faile, err:", err)
+			return
+		}
+		fmt.Println(string(buf[:n]))
+	}
+}
+```
+
+将上面的代码编译成client或client.exec可执行文件，先启动server端再启动client端，再client端输入任意内容回车之后就能够再server端看到client端发送的数据，从而实现TCP通信。
+
+### UDP编程
+
+#### Go语言实现UDP通信
+
+`UDP协议`
+
+> UDP协议中文名称是用户数据协议报协议，是OSI参考模型中一种无连接的传输层协议，不需要建立连接就能直接进行数据发送和接收，属于不可靠、没有时序的通信，但是UDP协议的实时性比较好，通常用于视频直播相关领域。
+
+`UDP服务端`
+
+使用Go语言的net包实现UDP服务端代码如下：
+
+```go
+package main
+
+import (
+	"fmt"
+	"net"
+)
+
+// UDP server端
+func main() {
+	listen, err := net.ListenUDP("udp", &net.UDPAddr{
+		IP:   net.IPv4(0, 0, 0, 0),
+		Port: 30000,
+	})
+	if err != nil {
+		fmt.Println("listen failed, err:", err)
+		return
+	}
+	defer listen.Close()
+	for {
+		var data [1024]byte
+		n, addr, err := listen.ReadFromUDP(data[:]) // 接收数据
+		if err != nil {
+			fmt.Println("read udp failed, err:", err)
+			continue
+		}
+		fmt.Printf("data:%v addr:%v count:%v\n", string(data[:n]), addr, n)
+		_, err = listen.WriteToUDP(data[:n], addr) // 发送数据
+		if err != nil {
+			fmt.Println("write to udp failed, err:", err)
+			continue
+		}
+
+	}
+}
+```
+
+`UDP客户端`
+
+使用Go语言的net包实现的UDP客户端代码如下：
+
+```go
+package main
+
+import (
+	"fmt"
+	"net"
+)
+
+// UDP 客户端
+func main() {
+	socket, err := net.DialUDP("udp", nil, &net.UDPAddr{
+		IP:   net.IPv4(0, 0, 0, 0),
+		Port: 30000,
+	})
+	if err != nil {
+		fmt.Println("连接服务端失败, err", err)
+		return
+	}
+	defer socket.Close()
+	sendData := []byte("Hello server")
+	_, err = socket.Write(sendData) // 发送数据
+	if err != nil {
+		fmt.Println("发送数据失败, err:", err)
+		return
+	}
+	data := make([]byte, 4096)
+	n, remoteAddr, err := socket.ReadFromUDP(data) // 接收数据
+	if err != nil {
+		fmt.Println("接收数据失败，err：", err)
+		return
+	}
+	fmt.Printf("recv: %v addr：%v connet: %v\n", string(data[:n]), remoteAddr, n)
+
+}
+```
+
+### HTTP编程
+
+### web工作流程
+
+- Web服务器的工作原理可以简单地归纳为
+  - 客户机通过TCP/IP协议建立到服务器的TCP连接
+  - 客户端向服务器发送HTTP协议请求包，请求服务器里的资源文档
+  - 服务器向客户机发送HTTP协议答应包，如果请求的资源包含有动态语言的内容，那么服务器会调用动态语言的解释引擎负责处理"动态内容"。并将处理的到的数据返回给客户端
+  - 客户机与服务器断开。由客户端解释HTML文档，再客户端屏幕上渲染图形结果
+
+### HTTP协议
+
+- 超文本传输协议是互联网再应用上最为广泛的一种网络协议，它详细规定了浏览器和万维网服务器之间的相互通信的规则，通过因特网传送万维网文档的数据传送协议
+- HTTP协议通常承载于TCP协议之上
+
+### HTTP客户端
+
+```go
+package main
+
+import (
+	"fmt"
+	"net/http"
+)
+
+func main() {
+	// http://127.0.0.1:8000/go
+	// 单独写回调函数
+	http.HandleFunc("/go", myHandler)
+	http.ListenAndServe("127.0.0.1:8000", nil)
+	// addr：监听的地址
+	// handler：回调函数
+}
+
+// handler 函数
+func myHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println(r.RemoteAddr, "连接成功")
+	// 请求方法：GET POST DELETE PUT UPDATE
+	fmt.Println("method---->", r.Method)
+	// go
+	fmt.Println("url---->", r.URL.Path)
+	fmt.Println("header---->", r.Header)
+	fmt.Println("body---->", r.Body)
+	// 回复
+	w.Write([]byte("www.baidu.com"))
+}
+```
+
+运行结果：
+
+```go
+127.0.0.1:62382 连接成功
+method----> GET
+url----> /go
+header----> map[Accept:[text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9] Accept-Encoding:[gzip, deflate, br] Accept-Language:[zh-CN,zh;q=0.9] Cache-Control:[max-age=0] Connection:[keep-alive] Sec-Ch-Ua:[" Not A;Brand";v="99", "Chromium";v="98", "Google Chrome";v="98"] Sec-Ch-Ua-Mobile:[?0] Sec-Ch-Ua-Platform:["macOS"] Sec-Fetch-Dest:[document] Sec-Fetch-Mode:[navigate] Sec-Fetch-Site:[none] Sec-Fetch-User:[?1] Upgrade-Insecure-Requests:[1] User-Agent:[Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.80 Safari/537.36]]
+```
+
+![image-20220208110805267](https://gitee.com/ran_yong/mark-down-table-upload/raw/master/img/image-20220208110805267.png)
+
+### HTTP服务端
+
+```go
+package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+)
+
+func main() {
+	resp, _ := http.Get("https://www.baidu.com")
+	defer resp.Body.Close()
+	fmt.Println("状态码--->", resp.Status)
+	fmt.Println(resp.Header)
+	// 200 OK
+	buf := make([]byte, 1024)
+	for {
+		n, err := resp.Body.Read(buf)
+		if err != nil && err != io.EOF {
+			fmt.Println(err)
+			return
+		} else {
+			fmt.Println("读取完毕")
+			res := string(buf[:n])
+			fmt.Println(res)
+			break
+		}
+	}
+}
+```
+
+运行结果：
+
+```go
+package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+)
+
+func main() {
+	resp, _ := http.Get("https://www.baidu.com")
+	defer resp.Body.Close()
+	fmt.Println("状态码--->", resp.Status)
+	// 200 OK
+	fmt.Println(resp.Header)
+	buf := make([]byte, 1024)
+	for {
+		// 接收服务端信息
+		n, err := resp.Body.Read(buf)
+		if err != nil && err != io.EOF {
+			fmt.Println(err)
+			return
+		} else {
+			fmt.Println("读取完毕")
+			res := string(buf[:n])
+			fmt.Println(res)
+			break
+		}
+	}
+}
+```
+
+运行结果：
+
+```go
+状态码---> 200 OK
+map[Accept-Ranges:[bytes] Cache-Control:[no-cache] Connection:[keep-alive] Content-Length:[227] Content-Type:[text/html] Date:[Tue, 08 Feb 2022 03:33:18 GMT] P3p:[CP=" OTI DSP COR IVA OUR IND COM " CP=" OTI DSP COR IVA OUR IND COM "] Pragma:[no-cache] Server:[BWS/1.1] Set-Cookie:[BD_NOT_HTTPS=1; path=/; Max-Age=300 BIDUPSID=CB200783148EA7D61872E0669D6CA9FD; expires=Thu, 31-Dec-37 23:55:55 GMT; max-age=2147483647; path=/; domain=.baidu.com PSTM=1644291198; expires=Thu, 31-Dec-37 23:55:55 GMT; max-age=2147483647; path=/; domain=.baidu.com BAIDUID=CB200783148EA7D6B809366876584A91:FG=1; max-age=31536000; expires=Wed, 08-Feb-23 03:33:18 GMT; domain=.baidu.com; path=/; version=1; comment=bd] Strict-Transport-Security:[max-age=0] Traceid:[1644291198353161447413072606535956375628] X-Frame-Options:[sameorigin] X-Ua-Compatible:[IE=Edge,chrome=1]]
+读取完毕
+<html>
+<head>
+        <script>
+                location.replace(location.href.replace("https://","http://"));
+        </script>
+</head>
+<body>
+        <noscript><meta http-equiv="refresh" content="0;url=http://www.baidu.com/"></noscript>
+</body>
+</html>
+```
+
+### WebSocket编程
+
+#### websocket是什么
+
+- WebSocket是一种在单个TCP连接上进行全双工通信的协议
+- WebSocket使得客户端在服务器之间的数据交换变得更加简单，允许服务端主动向客户端推送数据
+- 在WebSocket API中，浏览器和服务器只需要完成一次握手，两者之间就可以直接创建持久性的连接，并进行双向数据传输
+- 需要安装第三方包
+  - cmd中：go get -u -v github.com/gorilla/websocket
+
+#### 举个聊天室的例子：
+
+在同一级别下新建4个go文件分别是：
+
+- connection.go
+- data.go
+- hub.go
+- server.go
+
+::: details 点击查看代码
+
+`server.g`
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/gorilla/mux"
+	"net/http"
+)
+
+func main() {
+	router := mux.NewRouter()
+	go h.run()
+	router.HandleFunc("/ws", myws)
+	if err := http.ListenAndServe("127.0.0.1:8000", router); err != nil {
+		fmt.Println("err:", err)
+	}
+}
+```
+
+`hub.go`
+
+```go
+package main
+
+import "encoding/json"
+
+var h = hub{
+	c: make(map[*connection]bool),
+	u: make(chan *connection),
+	b: make(chan []byte),
+	r: make(chan *connection),
+}
+
+type hub struct {
+	c map[*connection]bool
+	b chan []byte
+	r chan *connection
+	u chan *connection
+}
+
+func (h *hub) run() {
+	for {
+		select {
+		case c := <-h.r:
+			h.c[c] = true
+			c.data.Ip = c.ws.RemoteAddr().String()
+			c.data.Type = "handshake"
+			data_b, _ := json.Marshal(c.data)
+			c.sc <- data_b
+		case c := <-h.u:
+			if _, ok := h.c[c]; ok {
+				delete(h.c, c)
+				close(c.sc)
+			}
+		case data := <-h.b:
+			for c := range h.c {
+				select {
+				case c.sc <- data:
+					delete(h.c, c)
+					close(c.sc)
+				}
+			}
+		}
+	}
+}
+```
+
+`data.go`
+
+```go
+package main
+
+type Data struct {
+	Ip       string   `json:"ip"`
+	User     string   `json:"user"`
+	From     string   `json:"from"`
+	Type     string   `json:"type"`
+	Content  string   `json:"content"`
+	UserList []string `json:"user_list"`
+}
+```
+
+`connection.go`
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/gorilla/websocket"
+	"net/http"
+)
+
+type connection struct {
+	ws   *websocket.Conn
+	sc   chan []byte
+	data *Data
+}
+
+var wu = &websocket.Upgrader{ReadBufferSize: 512,
+	WriteBufferSize: 512, CheckOrigin: func(r *http.Request) bool {
+		return true
+	}}
+
+func myws(w http.ResponseWriter, r *http.Request) {
+	ws, err := wu.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	c := &connection{sc: make(chan []byte, 256), ws: ws, data: &Data{}}
+	h.r <- c
+	go c.writer()
+	c.reader()
+	defer func() {
+		c.data.Type = "logout"
+		user_list = del(user_list, c.data.User)
+		c.data.UserList = user_list
+		c.data.Content = c.data.User
+		data_b, _ := json.Marshal(c.data)
+		h.b <- data_b
+		h.r <- c
+	}()
+}
+
+func (c *connection) writer() {
+	for message := range c.sc {
+		c.ws.WriteMessage(websocket.TextMessage, message)
+	}
+	c.ws.Close()
+}
+
+var user_list = []string{}
+
+func (c *connection) reader() {
+	for {
+		_, message, err := c.ws.ReadMessage()
+		if err != nil {
+			h.r <- c
+			break
+		}
+		json.Unmarshal(message, &c.data)
+		switch c.data.Type {
+		case "login":
+			c.data.User = c.data.Content
+			c.data.From = c.data.User
+			user_list = append(user_list, c.data.User)
+			c.data.UserList = user_list
+			data_b, _ := json.Marshal(c.data)
+			h.b <- data_b
+		case "user":
+			c.data.Type = "user"
+			data_b, _ := json.Marshal(c.data)
+			h.b <- data_b
+		case "logout":
+			c.data.Type = "logout"
+			user_list = del(user_list, c.data.User)
+			data_b, _ := json.Marshal(c.data)
+			h.b <- data_b
+			h.r <- c
+		default:
+			fmt.Print("========default================")
+		}
+	}
+}
+
+func del(slice []string, user string) []string {
+	count := len(slice)
+	if count == 0 {
+		return slice
+	}
+	if count == 1 && slice[0] == user {
+		return []string{}
+	}
+	var n_slice = []string{}
+	for i := range slice {
+		if slice[i] == user && i == count {
+			return slice[:count]
+
+		} else if slice[i] == user {
+			n_slice = append(slice[:i], slice[i+1:]...)
+			break
+		}
+	}
+	fmt.Println(n_slice)
+	return n_slice
+}
+```
+
+`local.html`
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="content-type" content="text/html;charset=utf-8">
+    <style>
+        p {
+            text-align: left;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+<div style="width: 800px;height: 600px;margin: 30px auto;text-align: center">
+    <h1>演示聊天室</h1>
+    <div style="width: 800px;border: 1px solid gray;height: 300px;">
+        <div style="width: 200px;height: 300px;float: left;text-align: left;">
+            <p><span>当前在线:</span><span id="user_num">0</span></p>
+            <div id="user_list" style="overflow: auto;">
+            </div>
+        </div>
+        <div id="msg_list" style="width: 598px;border:  1px solid gray; height: 300px;overflow: scroll;float: left;">
+        </div>
+    </div>
+    <br>
+    <textarea id="msg_box" rows="6" cols="50" onkeydown="confirm(event)"></textarea><br>
+    <input type="button" value="发送" onclick="send()">
+</div>
+</body>
+</html>
+
+<script type="text/javascript">
+    var uname = prompt('请输入用户名', 'user' + uuid(8, 16));
+    var ws = new WebSocket("ws://127.0.0.1:8080/ws");
+    ws.onopen = function () {
+        var data = "系统消息：建立连接成功";
+        listMsg(data);
+    };
+    ws.onmessage = function (e) {
+        var msg = JSON.parse(e.data);
+        var sender, user_name, name_list, change_type;
+        switch (msg.type) {
+            case 'system':
+                sender = '系统消息: ';
+                break;
+            case 'user':
+                sender = msg.from + ': ';
+                break;
+            case 'handshake':
+                var user_info = {'type': 'login', 'content': uname};
+                sendMsg(user_info);
+                return;
+            case 'login':
+            case 'logout':
+                user_name = msg.content;
+                name_list = msg.user_list;
+                change_type = msg.type;
+                dealUser(user_name, change_type, name_list);
+                return;
+        }
+        var data = sender + msg.content;
+        listMsg(data);
+    };
+    ws.onerror = function () {
+        var data = "系统消息 : 出错了,请退出重试.";
+        listMsg(data);
+    };
+    function confirm(event) {
+        var key_num = event.keyCode;
+        if (13 == key_num) {
+            send();
+        } else {
+            return false;
+        }
+    }
+    function send() {
+        var msg_box = document.getElementById("msg_box");
+        var content = msg_box.value;
+        var reg = new RegExp("\r\n", "g");
+        content = content.replace(reg, "");
+        var msg = {'content': content.trim(), 'type': 'user'};
+        sendMsg(msg);
+        msg_box.value = '';
+    }
+    function listMsg(data) {
+        var msg_list = document.getElementById("msg_list");
+        var msg = document.createElement("p");
+        msg.innerHTML = data;
+        msg_list.appendChild(msg);
+        msg_list.scrollTop = msg_list.scrollHeight;
+    }
+    function dealUser(user_name, type, name_list) {
+        var user_list = document.getElementById("user_list");
+        var user_num = document.getElementById("user_num");
+        while(user_list.hasChildNodes()) {
+            user_list.removeChild(user_list.firstChild);
+        }
+        for (var index in name_list) {
+            var user = document.createElement("p");
+            user.innerHTML = name_list[index];
+            user_list.appendChild(user);
+        }
+        user_num.innerHTML = name_list.length;
+        user_list.scrollTop = user_list.scrollHeight;
+        var change = type == 'login' ? '上线' : '下线';
+        var data = '系统消息: ' + user_name + ' 已' + change;
+        listMsg(data);
+    }
+    function sendMsg(msg) {
+        var data = JSON.stringify(msg);
+        ws.send(data);
+    }
+    function uuid(len, radix) {
+        var chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
+        var uuid = [], i;
+        radix = radix || chars.length;
+        if (len) {
+            for (i = 0; i < len; i++) uuid[i] = chars[0 | Math.random() * radix];
+        } else {
+            var r;
+            uuid[8] = uuid[13] = uuid[18] = uuid[23] = '-';
+            uuid[14] = '4';
+            for (i = 0; i < 36; i++) {
+                if (!uuid[i]) {
+                    r = 0 | Math.random() * 16;
+                    uuid[i] = chars[(i == 19) ? (r & 0x3) | 0x8 : r];
+                }
+            }
+        }
+        return uuid.join('');
+    }
+</script>
+```
+
+::: 
+
+运行：
+
+```go
+go run server.go hub.go data.go connection.go
+```
+
+**然后执行local.html**
+
+运行结果：
+
+![image-20220208235257575](https://gitee.com/ran_yong/mark-down-table-upload/raw/master/img/image-20220208235257575.png)
+
+## 并发编程
+
+### 并发介绍
+
+**进程和线程**
+
+> - 进程时程序在操作系统中一次执行过程，系统进行资源分配和调度的一个独立单位
+> - 线程时进程的一个执行实体，是CPU调度和分派的基本单位，它是比进程更小的能独立运行的基本单位
+> - 一个进程可以创建和撤销多个线程；同一个进程中的多个线程之间可以并发执行
+
+**并发和并行**
+
+>- 多线程程序在一个核的CPU上运行，就是并发
+>- 多线程在多个核的CPU上运行，就是并发
+
+**协程和线程**
+
+> - 协程：独立的栈空间，共享堆空间，调度由用户自己控制，本质上有点类似于用户级线程，这些用户级线程的调度也是自己实现的
+> - 线程：一个线程上可以抛多个写协程，协程师轻量级的线程
+
+### Goroutine
+
+> 在Java/c++中我们要实现并发编程的时候，我们通常需要自己维护一个线程池，并且需要自己去包装一个又一个的任务，同时需要自己去调度线程执行任务并维护上下文切换
+>
+> Go语言中的goroutine就是这样一种机制，goroutine的概念类似于线程，但goroutine是由Go的运行时调度和管理的。Go程序会智能地将goroutine中的任务合理地分配给每个CPU。Go语言之所以会被称为现代的编程语言，就是因为它在语言层面已经内置了调度和上下文切换的机制。
+>
+> 在Go语言编程中你不需要去自己写进程、线程、协程，你的技能包里只有一个技能-goroutine，当你需要让某个任务并发执行的时候，你只需要把这个任务包装成一个函数，开启一个goroutine去执行这个函数就可以了
+
+### 使用goroutine
+
+> Go语言中使用goroutine非常简单，只需要在调用函数的时候在前面加上go关键字，就可以为一个函数创建一个goroutine。
+>
+> 一个goroutine必定对应一个函数，可以创建多个goroutine去执行相同的函数。
+
+### 启动单个goroutine
+
+> 启动goroutine的方式非常简单，只需要在调用的函数(普通函数和匿名函数)前面加上一个go关键字。
+
+举个例子：
+
+```go
+package main
+
+import "fmt"
+
+func hello() {
+	fmt.Println("Hello Goroutine")
+}
+func main() {
+	hello()
+	fmt.Println("main goroutine done")
+}
+```
+
+运行结果：
+
+```go
+Hello Goroutine
+main goroutine done
+```
+
+这个示例中hello函数和下面的语句是串行的，执行的结果是打印完`Hello Goroutine`后打印 `main goroutine done`
+
+接下来我们调用hello函数钱敏啊加上关键字go，也就是启动一个goroutine去执行hello这个函数。
+
+```go
+func main() {
+	go hello()
+	fmt.Println("main goroutine done")
+}
+```
+
+运行结果：
+
+```go
+main goroutine done
+```
+
+这一次的执行结果只打印了`main goroutine done`，并没有打印`Hello Goroutine`,为什么呢？
+
+在程序启动时，Go程序就会为main()函数创建一个默认的goroutine。
+
+所以我们要想办法让main函数等一等hello函数，最简单粗暴的方式就是time.Sleep了。
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func hello() {
+	fmt.Println("Hello Goroutine")
+}
+func main() {
+	go hello() // 启动另外一个goroutine去执行hello函数
+	fmt.Println("main goroutine done")
+	time.Sleep(time.Second)
+}
+```
+
+运行结果：
+
+```go
+main goroutine done
+Hello Goroutine
+```
+
+执行上面的代码你会发现，这一次先打印`main goroutine done`，然后紧接这打印`Hello Goroutine`
+
+首先为什么会打印`main goroutine done`是因为我们在创建新的`goroutine`的时候需要花费一些时间，而此时main函数所在的`goroutine`是继续执行的。
+
+### 启动多个goroutine
+
+> 在Go语言中实现并发就是这样简单，我们还可以启动多个goroutine
+
+启动多个goroutine （这里使用了sync.WaitGroup来实现goroutine的同步）
+
+```go
+package main
+
+import (
+	"fmt"
+	"sync"
+)
+
+var wg sync.WaitGroup
+
+func hello(i int) {
+	defer wg.Done() // goroutine结束就登记-1
+	fmt.Println("hello goroutine", i)
+}
+
+func main() {
+	for i := 0; i < 5; i++ {
+		wg.Add(1) // 启动一个goroutine就登记+1
+		go hello(i)
+	}
+	wg.Wait() // 等待所有登记的goroutine都结束
+}
+```
+
+运行结果：
+
+```go
+hello goroutine 4
+hello goroutine 1
+hello goroutine 0
+hello goroutine 2
+hello goroutine 3
+```
+
+多次执行上面的代码，会发现每次打印的数字的顺序都不一致。这是因为5个goroutine是并发执行的，而goroutine的调度是随机的。
+
+### runtime包
+
+### runtime.Gosched()
+
+> 让出CPU时间片，重新等待安排任务(大概意思就是本来计划的好好的周末出去烧烤，但是你妈让你去相亲,两种情况第一就是你相亲速度非常快，见面就黄不耽误你继续烧烤，第二种情况就是你相亲速度特别慢，见面就是你侬我侬的，耽误了烧烤，但是还馋就是耽误了烧烤你还得去烧烤)
+
+```go
+package main
+
+import (
+	"fmt"
+	"runtime"
+)
+
+func main() {
+	go func(s string) {
+		for i := 0; i < 2; i++ {
+			fmt.Println(s)
+		}
+	}("world")
+	// 主协程
+	for i := 0; i < 2; i++ {
+		// 切一下，再次分配任务
+		runtime.Gosched()
+		fmt.Println("hello")
+	}
+}
+```
+
+运行结果：
+
+```go
+main goroutine: i = 1
+new goroutine: i = 1
+main goroutine: i = 2
+new goroutine: i = 2
+new goroutine: i = 3
+```
+
+### runtime.Goexit()
+
+> 退出当前协程（一边烧烤一边相亲，突然发现相亲对象太丑影响烧烤，果断让她滚蛋，然后也就没有然后了）
+
+```go
+package main
+
+import (
+	"fmt"
+	"runtime"
+)
+
+func main() {
+	go func() {
+		defer fmt.Println("A.defer")
+		func() {
+			defer fmt.Println("B.defer")
+			// 结束协程
+			runtime.Goexit()
+			defer fmt.Println("C.defer")
+			fmt.Println("B")
+		}()
+		fmt.Println("A")
+	}()
+	for {
+	}
+}
+```
+
+运行结果：
+
+```go
+B.defer
+A.defer
+```
+
+### runtime.GOMAXPROCS
+
+> Go运行时的调度器使用GOMAXPROCS参数来确定需要使用多少个OS线程来同时执行Go代码。默认值时机器上的CPU核心数。
+>
+> Go语言中可以通过runtime.GOMAXPROCS()函数设置当前程序并发时占用的CPU逻辑核心数。
+>
+> 我们可以通过将任务分配到不同的CPU逻辑核心上实现并行的效果。
+
+举个例子：
+
+```go
+package main
+
+import (
+	"fmt"
+	"runtime"
+	"time"
+)
+
+func a() {
+	for i := 0; i < 5; i++ {
+		fmt.Println("A:", i)
+	}
+}
+
+func b() {
+	for i := 0; i < 5; i++ {
+		fmt.Println("B:", i)
+	}
+}
+
+func main() {
+	runtime.GOMAXPROCS(1)
+	go a()
+	go b()
+	time.Sleep(time.Second)
+}
+```
+
+运行结果：
+
+```go
+B: 0
+B: 1
+B: 2
+B: 3
+B: 4
+A: 0
+A: 1
+A: 2
+A: 3
+A: 4
+```
+
+两个任务只有一个逻辑核心，此时时做完一个任务再做另一个任务。将逻辑核心设为2，此时两个任务并行执行，代码如下：
+
+```go
+package main
+
+import (
+	"fmt"
+	"runtime"
+	"time"
+)
+
+func a() {
+	for i := 0; i < 5; i++ {
+		fmt.Println("A:", i)
+	}
+}
+func b() {
+	for i := 0; i < 5; i++ {
+		fmt.Println("B", i)
+	}
+}
+func main() {
+	runtime.GOMAXPROCS(2)
+	go a()
+	go b()
+	time.Sleep(time.Second)
+}
+```
+
+运行结果：
+
+```go
+A: 0
+A: 1
+A: 2
+A: 3
+A: 4
+B 0
+B 1
+B 2
+B 3
+B 4
+```
+
+Go语言中的操作系统线程和goroutine的关系：
+
+- 一个操作系统线程对应用户态多个goroutine
+- go程序可以同时使用多个操作系统线程
+- goroutine和OS线程时多对多的关系，即m:n
