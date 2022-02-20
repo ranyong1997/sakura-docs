@@ -386,7 +386,7 @@ module.exports = {
             {
                 bar: false,
                 title: "未来规划",
-                describe: ["测开", "赚money"],
+                describe: ["开发", "赚money"],
                 tag: ["忘记过去，展望未来"],
                 showTag: true,
             },
