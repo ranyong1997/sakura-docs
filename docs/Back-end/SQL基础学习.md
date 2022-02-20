@@ -1,6 +1,6 @@
 ---
 date: "2022/02/18"
-categories: [后端]
+categories: [数据库]
 tag: [数据库,SQL]
 ---
 

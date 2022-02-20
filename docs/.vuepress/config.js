@@ -172,6 +172,12 @@ module.exports = {
                         children: [
                             '/Back-end/Go基础学习.md'
                         ]
+                    },
+                    {
+                        text: 'SQL基础',
+                        children: [
+                            '/Back-end/SQL基础学习.md'
+                        ]
                     }
                 ]
             },
