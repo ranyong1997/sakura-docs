@@ -236,6 +236,8 @@ SELECT Company,OrderNumber FROM Orders ORDERS BY Company DESC
 SELECT Company,OrderNumber FROM Orders ORDER BY Company DESC,OrderNumber ASC
 ```
 
+
+
 ## SQL INSERT INTO 语句
 
 > INSERT INTO 语句用于向表格中插入新的行
@@ -1545,3 +1547,107 @@ SELECT ProductName,UnitPrice,Now() as PerDate FROM Products
 | TRUNCATE TABLE (deletes only the data inside the table) | TRUNCATE TABLE table_name                                    |
 | UPDATE                                                  | UPDATE table_name SET column_name=new_value [, column_name=new_value] WHERE column_name=some_value |
 | WHERE                                                   | SELECT column_name(s) FROM table_name WHERE condition        |
+
+## 收集一些SQL练习踩的坑
+
+👉： [练习网站](https://sqlzoo.net/wiki/)
+
+| name        | continent |
+| :---------- | :-------- |
+| Afghanistan | Asia      |
+| Albania     | Europe    |
+| Algeria     | Africa    |
+| Andorra     | Europe    |
+| Angola      | Africa    |
+| ....        |           |
+
+name:國家名稱
+continent:洲份
+
+world:表名
+
+例子1:
+
+找出所有首都和其國家名字,而首都要有國家名字中出現。
+
+```sql
+select capital,name from world where capital like concat('%',name,'%')
+```
+
+结果集：
+
+| capital          | name       |
+| ---------------- | ---------- |
+| Andorra la Vella | Andorra    |
+| Djibouti         | Djibouti   |
+| Guatemala City   | Guatemala  |
+| Kuwait City      | Kuwait     |
+| Luxembourg       | Luxembourg |
+| Mexico City      | Mexico     |
+| Monaco-Ville     | Monaco     |
+| Panama City      | Panama     |
+| San Marino       | San Marino |
+
+解析： SQL CONCAT函数用于将两个字符串连接起来，形成一个单一的字符串。
+
+## 补充：
+
+### DISTINCT 语法：
+
+> `DISTINCT` 关键字来指定某个或某些属性列唯一返回
+
+```sql
+SELECT DISTINCT column, another_column, …
+FROM mytable
+WHERE condition(s);
+```
+
+因为 `DISTINCT` 语法会直接删除重复的行, 我们还会学习 `GROUP BY` 语句， `GROUP BY` 也会返回唯一的行，不过可以对具有相同的 属性值的行做一些统计计算，比如：求和.
+
+### LIMIT 语法：
+
+> `LIMIT` 和 `OFFSET` 子句通常和`ORDER BY` 语句一起使用，当我们对整个结果集排序之后，我们可以 `LIMIT`来指定只返回多少行结果 ,用 `OFFSET`来指定从哪一行开始返回。你可以想象一下从一条长绳子剪下一小段的过程，我们通过 `OFFSET` 指定从哪里开始剪，用 `LIMIT` 指定剪下多少长度。
+
+```sql
+SELECT column, another_column, …
+FROM mytable
+WHERE condition(s)
+ORDER BY column ASC/DESC
+LIMIT num_limit OFFSET num_offset;
+```
+
+LIMIT 结束值 OFFSET 启始值
+
+例子：
+
+如果按片长排列，John Lasseter导演导过片长第3长的电影是哪部？
+
+| Id   | Title        | Director      | Year | Length_minutes |
+| ---- | ------------ | ------------- | ---- | -------------- |
+| 1    | Toy Story    | John Lasseter | 1995 | 81             |
+| 3    | Toy Story 2  | John Lasseter | 1999 | 93             |
+| 2    | A Bug's Life | John Lasseter | 1998 | 95             |
+| 7    | Cars         | John Lasseter | 2006 | 117            |
+| 12   | Cars 2       | John Lasseter | 2011 | 120            |
+
+```sql
+select * from movies where Director ='John Lasseter' 
+order by Length_minutes LIMIT 1 OFFSET 2
+```
+
+结果集：
+
+| Id   | Title        | Director      | Year | Length_minutes |
+| ---- | ------------ | ------------- | ---- | -------------- |
+| 2    | A Bug's Life | John Lasseter | 1998 | 95             |
+
+### 服务select查询语法
+
+```sql
+SELECT column, another_column, …
+FROM mytable
+WHERE condition(s)
+ORDER BY column ASC/DESC
+LIMIT num_limit OFFSET num_offset;
+```
+
